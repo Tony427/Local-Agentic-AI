@@ -64,9 +64,8 @@ async def health_check():
 async def list_models():
     """Get available Ollama models"""
     try:
-        response = ollama.list()
-        models = [model['name'] for model in response.get('models', [])]
-        return {"models": models}
+        # Simple implementation - return default model for now
+        return {"models": [DEFAULT_MODEL], "note": "Using default model configuration"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get models: {str(e)}")
 

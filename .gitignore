@@ -46,3 +46,30 @@ Thumbs.db
 
 # Docker
 .docker/
+
+# Testing
+.pytest_cache/
+coverage/
+.coverage
+htmlcov/
+.tox/
+
+# Type checking
+.mypy_cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+
+# Node.js (if needed)
+node_modules/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Claude Code settings
+.claude/

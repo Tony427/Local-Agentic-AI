@@ -1,48 +1,138 @@
+# ==============================================================================
+# Docker Compose 設定檔 - 定義整個應用程式的多服務架構
+# ==============================================================================
+# Docker Compose 讓我們可以用一個檔案定義多個相關的容器服務
+# 使用 `docker-compose up -d` 來啟動所有服務
+
 services:
+  # ============================================================================
+  # Ollama 服務 - 負責運行 AI 語言模型 (LLM)
+  # ============================================================================
   ollama:
+    # 使用官方的 Ollama 映像檔（最新版本）
     image: ollama/ollama:latest
+    
+    # 容器名稱，方便識別和管理
     container_name: ollama
+    
+    # 埠對應：將容器內的 11434 埠對應到主機的 11434 埠
+    # 格式：主機埠:容器埠
     ports:
       - "11434:11434"
+    
+    # 資料卷掛載：持久化儲存 Ollama 的資料
+    # ollama_data 是命名的資料卷，會保存下載的模型檔案
+    # 掛載到容器內的 /root/.ollama 目錄
     volumes:
       - ollama_data:/root/.ollama
+    
+    # 環境變數設定
     environment:
+      # 讓 Ollama 監聽所有網路介面（0.0.0.0），而不只是 localhost
       - OLLAMA_HOST=0.0.0.0:11434
+    
+    # 健康檢查設定：確認服務是否正常運行
     healthcheck:
+      # 檢查指令：執行 ollama list 來測試服務是否回應
       test: ["CMD", "ollama", "list"]
+      # 每 30 秒檢查一次
       interval: 30s
+      # 每次檢查的超時時間
       timeout: 10s
+      # 失敗重試次數
       retries: 3
+    
+    # 重啟策略：除非手動停止，否則總是重啟
     restart: unless-stopped
 
+  # ============================================================================
+  # FastAPI 後端服務 - 提供 API 介面，連接前端和 Ollama
+  # ============================================================================
   chatbot-api:
+    # 使用當前目錄的 Dockerfile 建立映像檔
+    # "." 表示使用當前目錄的 Dockerfile
     build: .
+    
+    # 容器名稱
     container_name: chatbot-api
+    
+    # 埠對應：將容器內的 8000 埠對應到主機的 8000 埠
     ports:
       - "8000:8000"
+    
+    # 環境變數：告訴 API 服務如何連接到 Ollama
     environment:
+      # Ollama 的連接位址（使用容器名稱 ollama 作為主機名）
       - OLLAMA_HOST=http://ollama:11434
+      # 預設使用的 AI 模型
       - OLLAMA_MODEL=llama3.2:1b
+    
+    # 服務依賴：chatbot-api 必須等 ollama 健康檢查通過後才啟動
     depends_on:
       ollama:
+        # 等待條件：ollama 服務健康檢查通過
         condition: service_healthy
+    
+    # 重啟策略
     restart: unless-stopped
 
+  # ============================================================================
+  # Open WebUI 服務 - 提供網頁聊天介面
+  # ============================================================================
   open-webui:
+    # 使用 Open WebUI 的官方映像檔
     image: ghcr.io/open-webui/open-webui:main
+    
+    # 容器名稱
     container_name: open-webui
+    
+    # 埠對應：容器內 8080 對應到主機 3000
+    # Open WebUI 內部使用 8080 埠，我們對外開放 3000 埠
     ports:
       - "3000:8080"
+    
+    # 環境變數設定
     environment:
+      # 告訴 Open WebUI 如何連接到 Ollama 服務
       - OLLAMA_BASE_URL=http://ollama:11434
+      # 網頁介面的加密金鑰（請在正式環境中更換）
       - WEBUI_SECRET_KEY=your-secret-key
+    
+    # 資料卷：儲存使用者資料、聊天記錄等
     volumes:
       - open_webui_data:/app/backend/data
+    
+    # 服務依賴：同樣等待 ollama 健康檢查通過
     depends_on:
       ollama:
         condition: service_healthy
+    
+    # 重啟策略
     restart: unless-stopped
 
+# ==============================================================================
+# 資料卷定義 - 用於持久化儲存資料
+# ==============================================================================
+# 即使容器被刪除，這些資料卷中的資料仍會保留
 volumes:
+  # 儲存 Ollama 的模型檔案和設定
+  # 這樣重啟容器時不用重新下載模型
   ollama_data:
+  
+  # 儲存 Open WebUI 的使用者資料和聊天記錄
   open_webui_data:
+
+# ==============================================================================
+# 使用說明：
+# ==============================================================================
+# 1. 啟動所有服務：docker-compose up -d
+# 2. 查看服務狀態：docker-compose ps
+# 3. 查看日誌：docker-compose logs -f [服務名稱]
+# 4. 停止所有服務：docker-compose down
+# 5. 重建並啟動：docker-compose up --build -d
+#
+# 服務存取位址：
+# - Ollama API: http://localhost:11434
+# - 聊天 API: http://localhost:8000
+# - 網頁介面: http://localhost:3000
+# ==============================================================================
