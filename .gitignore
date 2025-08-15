@@ -43,3 +43,6 @@ Thumbs.db
 
 # Ollama models cache
 .ollama/
+
+# Docker
+.docker/
